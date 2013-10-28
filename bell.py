@@ -12,6 +12,7 @@ Sven Petai <hadara a t bsd.ee> Tue Aug 24 14:40:21 EEST 2004
 """
 
 import os
+import sys
 import time 
 import sched
 import signal
@@ -86,9 +87,25 @@ def purge_events():
         logging.info("removing event "+str(event))
         schedule.cancel(event)
 
+def check_config(configd):
+    """verify that things that should exist in the config indeed do exist and
+    the referenced binaries are actually present
+    """
+    # XXX: verify first that the required config parameters are present
+    if not os.path.exists(configd['player']):
+        logging.error("player %s wasn't found" % (configd['player'],))
+        return False
+    if not os.path.isdir(configd['sound_dir']):
+        logging.error("sound directory %s wasn't found" % (configd['sound_dir'],))
+        return False
+    return True
+
 def reload_config(_='', notused=''):
+    # FIXME: we shouldn't allow config to overwrite stuff in the global namespace
     exec(compile(open(CONFIG_FILENAME).read(), CONFIG_FILENAME, 'exec'), globals())
-    print(locals())
+    if not check_config(globals()):
+        logging.error("reading configuration failed. Exiting.")
+        sys.exit(-1)
     reschedule()
 
 tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).timetuple()
