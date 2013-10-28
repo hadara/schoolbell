@@ -1,5 +1,5 @@
 # dont use full path here
-mp3player = 'mpg123'
+mp3player = 'mplayer'
 
 sound_dir = "/root/bell"
 mixer_prog = '/sbin/mixer'
