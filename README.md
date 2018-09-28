@@ -7,11 +7,13 @@ about the needless complexity and price of commercial schoolbell management soft
 So in couple of hours I hacked this together and it has been in production in several schools since then, more than 14 years so far :-)
 
 
-==== usage ====
+## usage
 
 just edit conf.py to match your needs and then start the application with: python bell.py
 you can start it automatically on bootup for example by placing it in the crontab:
+```
 @reboot cd /path/to/bell && python bell.py 1> /dev/null 2> /dev/null &
+```
 
 ensure that the user you run this script under has sufficient privileges to play audio and change mixer settings.
 
