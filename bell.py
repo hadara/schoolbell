@@ -1,13 +1,6 @@
 #!/usr/bin/env python3
 
-"""Rather simplistic application for managing schoolbell
-usage:
-	just edit config.py to match your need and 
-then start application with:
-python bell.py
-you can edit conf.py while it's running and force reload
-with SIGHUP
-
+"""
 Sven Petai <hadara a t bsd.ee> Tue Aug 24 14:40:21 EEST 2004
 """
 
@@ -18,6 +11,10 @@ import sched
 import signal
 import logging
 import datetime
+
+#if sys.version_info.major < 3:
+#    print("python 3.X required")
+#    sys.exit(-2)
 
 CONFIG_FILENAME = "conf.py"
 
@@ -40,9 +37,27 @@ def is_no_bell_day():
 def tuple_to_str(timetuple):
     return '-'.join(map(lambda a: '%02d' % a, timetuple))
 
+def get_sound(sound_name):
+    sound = sounds.get(sound_name)
+    if sound is None:
+        logging.error('sound %s not defined in config' % (sound_name,))
+        return None
+    if not isinstance(sound, dict) or 'file' not in sound:
+        logging.error('sound definition should be a dict containing at least filename key. Is: %s' % (str(sound),))
+        return None
+    if 'mixer_high' not in sound:
+        sound['mixer_high'] = mixer_high
+    if 'mixer_low' not in sound:
+        sound['mixer_low'] = mixer_low
+    return sound
+
 def run_event(event):
     logging.info('event:'+str(event))
-    start_bell(sounds[event['sound']])
+    sound = get_sound(event['sound'])
+    if sound is None:
+        logging.error('event %s not run because sound definition is missing' % (str(event),))
+        return
+    start_bell(sound)
 
 def schedule_day(events):
     logging.info('scheduling day. events:'+str(events))
@@ -71,16 +86,18 @@ def reschedule():
     today_s = tuple_to_str(time.localtime()[:3])
 
     # first check if exception entry exist for today in datemap
-    if datemap.has_key(today_s):
+    if today_s in datemap:
     	schedule_day(datemap[today_s])
     else:
         # otherwise schedule it as normal weekday
         schedule_day(days[time.strftime("%A")])	
     
 def start_bell(sound):
-    os.system("killall %s" % (mp3player))
-    os.system("%s %s" % (mixer_prog, str(mixer_high)))
-    os.system("%s %s/%s &&  %s %s &" % (mp3player, sound_dir, sound, mixer_prog, str(mixer_low)))
+    # XXX: using system() directly is unsafe in general of course but in this case all of the parameters come from the
+    # config file so it should be good enough
+    os.system("killall %s" % (player))
+    os.system("%s %s" % (mixer_prog, str(sound['mixer_high'])))
+    os.system("%s %s/%s &&  %s %s &" % (player, sound_dir, sound['file'], mixer_prog, str(sound['mixer_low'])))
 
 def purge_events():
     for event in schedule.queue:
@@ -109,7 +126,7 @@ def reload_config(_='', notused=''):
     reschedule()
 
 tomorrow = (datetime.datetime.now() + datetime.timedelta(days=1)).timetuple()
-# scedule reload event for 00:10 to reload bell schedule for the next day
+# schedule reload event for 00:10 to reload bell schedule for the next day
 schedule.enterabs(time.mktime(tomorrow[:3] + (0, 10, 0, 0, 0, -1)), 1, reschedule, ())
 
 if __name__ == '__main__':
